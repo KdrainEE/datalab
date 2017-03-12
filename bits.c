@@ -170,8 +170,9 @@ NOTES:
  *   Max ops: 8
  *   Rating: 1
  */
-int bitOr(int x, int y) {
-  return 2;
+int bitOr(int x, int y) {///////////////////////////////////////////////////////////////done
+
+	return ~(~x&~y);
 }
 /* 
  * isEqual - return 1 if x == y, and 0 otherwise 
@@ -180,8 +181,8 @@ int bitOr(int x, int y) {
  *   Max ops: 5
  *   Rating: 2
  */
-int isEqual(int x, int y) {
-  return 2;
+int isEqual(int x, int y) {//////////////////////////////////////////////////////////////done
+  return !(x^y);
 }
 /* 
  * anyEvenBit - return 1 if any even-numbered bit in word set to 1
@@ -190,8 +191,10 @@ int isEqual(int x, int y) {
  *   Max ops: 12
  *   Rating: 2
  */
-int anyEvenBit(int x) {
-  return 2;
+int anyEvenBit(int x) {////////////////////////////////////////////////////////////////////done
+	int a = 0x55;
+	int mask = (a<<24)|(a<<16)|(a<<8)|a;
+  return !!(x&mask);
 }
 /* 
  * allEvenBits - return 1 if all even-numbered bits in word set to 1
@@ -200,8 +203,11 @@ int anyEvenBit(int x) {
  *   Max ops: 12
  *   Rating: 2
  */
-int allEvenBits(int x) {
-  return 2;
+int allEvenBits(int x) {//////////////////////////////////////////////////////////////////done
+	int a = 0x55;
+	int mask = (a<<24)|(a<<16)|(a<<8)|a;
+	x = x&mask;
+  return !(x^mask);
 }
 /* 
  * rotateLeft - Rotate x to the left by n
@@ -232,19 +238,20 @@ int greatestBitPos(int x) {
  *   Max ops: 10
  *   Rating: 1
  */
-int isTmax(int x) {
-  return 2;
+int isTmax(int x) {//////////////////////////////////////////////////////////////done
+	
+  return !((~x^(x+1))|!(~x));
 }
 /* 
  * leastBitPos - return a mask that marks the position of the
- *               least significant 1 bit. If x == 0, return 0
+ *   least significant 1 bit. If x == 0, return 0
  *   Example: leastBitPos(96) = 0x20
  *   Legal ops: ! ~ & ^ | + << >>
  *   Max ops: 6
  *   Rating: 2 
  */
-int leastBitPos(int x) {
-  return 2;
+int leastBitPos(int x) {///////////////////////////////////////////////////////////done
+  return x&(~x+1);
 }
 /* 
  * subOK - Determine if can compute x-y without overflow
@@ -289,8 +296,10 @@ int satMul3(int x) {
  *   Max ops: 15
  *   Rating: 2
  */
-int divpwr2(int x, int n) {
-    return 2;
+int divpwr2(int x, int n) {/////////////////////////////////////////////////done
+	int sign = (x>>31)&1;
+    int bias = (sign<<n) + ~sign + 1;
+    return (x + bias)>>n;
 }
 /* 
  * float_abs - Return bit-level equivalent of absolute value of f for
@@ -304,7 +313,14 @@ int divpwr2(int x, int n) {
  *   Rating: 2
  */
 unsigned float_abs(unsigned uf) {
-  return 2;
+	unsigned abs = uf&(~(1<<31));
+	unsigned minNan = (0x7f8<<20)+1;
+	if(abs >=minNan){
+		return uf;
+	}
+	else{
+  		return abs;
+	}
 }
 /* 
  * float_half - Return bit-level equivalent of expression 0.5*f for
