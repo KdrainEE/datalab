@@ -217,7 +217,7 @@ int allEvenBits(int x) {////////////////////////////////////////////////////////
  *   Max ops: 25
  *   Rating: 3
  */
-int rotateLeft(int x, int n) {
+int rotateLeft(int x, int n) { //////////////////need to check
 	int shift = 31-n;
 	int a = x >> shift;
 	x = (x >> n)&(~((1<<n)-1));
@@ -232,7 +232,7 @@ int rotateLeft(int x, int n) {
  *   Max ops: 70
  *   Rating: 4
  */
-int greatestBitPos(int x) {
+int greatestBitPos(int x) { //////////////// need to check
   unsigned int a;
 	a = x;
 	a = a | a >> 1;
@@ -273,8 +273,13 @@ int leastBitPos(int x) {////////////////////////////////////////////////////////
  *   Max ops: 20
  *   Rating: 3
  */
-int subOK(int x, int y) {
-  return 2;
+int subOK(int x, int y) {///////////////////////need to check
+  int subtraction, samesign samAsy, ret;
+	subtraction = x+1+~y;
+	samesign = x^y;
+	sameAsy = ~(subtraction^y);
+	ret = ~(samesign&sameAsy);
+	return 1&(ret>>31);
 }
 /*
  * isLessOrEqual - if x <= y  then return 1, else return 0
@@ -283,8 +288,19 @@ int subOK(int x, int y) {
  *   Max ops: 24
  *   Rating: 3
  */
-int isLessOrEqual(int x, int y) {
-  return 2;
+int isLessOrEqual(int x, int y) {///////////////////////need to check
+	int nX = x+1;
+	int aY = nX+y;//this is negative is x>y
+	int sign = (aY>>31)&1;
+	//check boundary conditions
+	int leftBitMask = 1<<31;
+	int xLeftBit = leftBitMask&x;
+	int yLeftBit = leftBitMask&y;
+	int XORD = xLeftBit^yLeftBit;
+	XORD = (XORD>>31)&1;
+
+	return (XORD&(xLeftBit>>31))|(!sign&!XORD);
+
 }
 /*
  * satMul3 - multiplies by 3, saturating to Tmin or Tmax if overflow
@@ -297,8 +313,15 @@ int isLessOrEqual(int x, int y) {
  *  Max ops: 25
  *  Rating: 3
  */
-int satMul3(int x) {
-    return 2;
+int satMul3(int x) {/////////////////////////////need to test
+    int xSign =(x>>31)&1;
+		int timesTwo = x+x;
+		int timesTwoSign = (timesTwo>>31)&1;
+		int timesThree = timesTwo+x;
+		int timesThreeSign = (timesThree>>31)&1;
+		int overflow = (((xSign^timesTwoSign)|(timesTwoSign^timesThreeSign))<<31)>>31;
+		int possibleOverflow = (~(x>>31))^(0x1<<31);
+		return (overflow&possibleOverflow)|((~overflow)&timesThree);
 }
 /*
  * divpwr2 - Compute x/(2^n), for 0 <= n <= 30
@@ -324,7 +347,7 @@ int divpwr2(int x, int n) {/////////////////////////////////////////////////done
  *   Max ops: 10
  *   Rating: 2
  */
-unsigned float_abs(unsigned uf) {
+unsigned float_abs(unsigned uf) { ///////////////////////////////done
 	unsigned abs = uf&(~(1<<31));
 	unsigned minNan = (0x7f8<<20)+1;
 	if(abs >=minNan){
@@ -345,8 +368,29 @@ unsigned float_abs(unsigned uf) {
  *   Max ops: 30
  *   Rating: 4
  */
-unsigned float_half(unsigned uf) {
-  return 2;
+unsigned float_half(unsigned uf) {///////////////////////////need to checked
+  int round, sign, EXP, maskEXP, maskSign, maskEM, maskSM, tmp;
+	round = !((uf&3)^3);
+	maskSign = 0x8<<28;
+	maskEXP =(0x7f<<31)|(1<<23);
+	maskM = (1<<23)-1;
+	maskEM = (1<<31)-1;
+	maskSM = (0x8<<28)|((1<<23)-1);
+	EXP = uf&maskEXP;
+	sign = uf&maskSign;
+	//NAN or infinity
+	if (EXP == maskEXP) return uf;
+	//special case EXP = 1
+	if (EXP ==(1<<23)){
+		return sign|(round+((uf&maskEM)>>1));
+	}
+	//EXP=0 denormal
+	if (EXP == 0x0){
+		tmp = (uf&maskM)>>1;
+		return sign | (tmp+round);
+	}
+	//normalized case if code gets to here
+	return (((EXP>>23)-1)<<23)|(uf&maskSM);
 }
 /*
  * float_i2f - Return bit-level equivalent of expression (float) x
@@ -357,6 +401,53 @@ unsigned float_half(unsigned uf) {
  *   Max ops: 30
  *   Rating: 4
  */
-unsigned float_i2f(int x) {
-  return 2;
+unsigned float_i2f(int x) {//###*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#
+	int tx = x;
+	unsigned result = 0; //= x & (1<<31);
+	//b will be the sign bit with 31 times left shifted.
+	int b = x&(1<<31);
+	int cc = 0x7f;
+	int qtx;
+	int lastbit;
+	int mask;
+	int f,f1,f2,g,h,i,rr,q,lbx;
+	if(x==0) return 0; //special case 1 : x is 0.
+	if(x == (1<<31)) { //special case 2 : x is tmin. we can't negate this value.
+		return (0xcf<<24);
+	}
+	result = result | b; // mark sign bit.
+	if(b) {
+		tx = -x; // let's consider only positive value.
+	}
+	qtx = tx;
+	while(qtx/=2) { // get E value.
+		cc=cc+1;
+	}
+	//cc will be Exp value.
+	lastbit = cc-0x7f; //last bit is E value.
+	mask = (1<<lastbit) - 1;
+	//get other bit under 'lastbit'.
+	q = (mask & tx);
+	lbx = 23-lastbit;
+	if(lastbit<=23) {
+		//less than 24 bits remain, then, M is just q<<lbx.
+		result = result + (q<<lbx);
+	} else {
+		f = -lbx;
+		f1 = f-1;
+		f2 = 1<<f1;
+		g = q & (f2-1);
+		h = q & (1<<(f));
+		i = q & (f2);
+		rr = q >> (f);
+		//rounding.
+		//g : check under (lastbit-25) bit. if g is non-zero, there is a bit under the (lastbit-25) bit.
+		//h : check (lastbit-23) bit. if h is non-zero, even-rounding is possible.
+		//i : check (lastbit-24) bit. it's essential for round-up.
+		rr = rr + (i && (g || h));
+		result = result | rr;
+	}
+	//add Exp bits.
+	result = result + (cc<<23);
+return result;
 }
